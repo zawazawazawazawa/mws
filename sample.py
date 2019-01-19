@@ -11,6 +11,8 @@ import six
 import xml.etree.ElementTree as ET
 import os
 
+ASIN = input('ASIN?: ')
+
 
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
@@ -35,7 +37,7 @@ data = {
     'SignatureVersion': '2',
     'Timestamp'       : timestamp,
     'Version'         : '2011-10-01',
-    'ASINList.ASIN.1' : 'B07LG2WH2Q'
+    'ASINList.ASIN.1' : ASIN
 }
 
 query_string = '&'.join('{}={}'.format(
