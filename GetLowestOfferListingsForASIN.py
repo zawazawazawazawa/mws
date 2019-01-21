@@ -13,7 +13,6 @@ import os
 
 ASIN = input('ASIN?: ')
 
-
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
     'ACCESS_KEY_ID': os.environ['ACCESS_KEY_ID'],
@@ -28,16 +27,17 @@ def datetime_encode(dt):
 
 timestamp = datetime_encode(datetime.datetime.utcnow())
 
+
 data = {
     'AWSAccessKeyId': AMAZON_CREDENTIAL['ACCESS_KEY_ID'],
-    'Action'          : 'GetMatchingProduct',
+    'Action'          : 'GetLowestOfferListingsForASIN',
     'MarketplaceId'   : 'A1VC38T7YXB528',
     'SellerId'        : AMAZON_CREDENTIAL['SELLER_ID'],
     'SignatureMethod' : 'HmacSHA256',
     'SignatureVersion': '2',
     'Timestamp'       : timestamp,
     'Version'         : '2011-10-01',
-    'ASINList.ASIN.1' : ASIN
+    'ASINList.ASIN.1' : ASIN,
 }
 
 query_string = '&'.join('{}={}'.format(
@@ -65,52 +65,9 @@ ns = {
         'ns2'  :'http://mws.amazonservices.com/schema/Products/2011-10-01/default.xsd'
 }
 
-result = {}
+# 最安値
+price_list = []
+for price in root.findall('.//xmlns:ListingPrice/xmlns:Amount', ns):
+    price_list.append(price.text)
 
-# ASIN
-result['ASIN'] = ASIN
-
-# 最下位セールスカテゴリランク
-
-# 商品名
-title = root.find('.//ns2:Title', ns).text
-result['Title'] = title
-
-# メーカ名
-manufacturer = root.find('.//ns2:Manufacturer', ns).text
-result['Manufacturer'] = manufacturer
-
-# メーカ型番
-model = root.find('.//ns2:Model', ns).text
-result['Model'] = model
-
-# ブランド名
-brand = root.find('.//ns2:Brand', ns).text
-result['Brand'] = brand
-
-# 画像 (サムネ)
-image_url = root.find('.//ns2:URL', ns).text
-result['Image_URL'] = image_url
-
-# 画像 (メイン)
-if '_SL75_.' in image_url:
-    result['Main_image_url'] = image_url.replace('_SL75_.', '')
-
-# 商品グループ
-product_group = root.find('.//ns2:ProductGroup', ns).text
-result['Product Group'] = product_group
-
-# 高さ (cm)
-height = root.find('.//ns2:Height', ns).text
-result['Height (inched)'] = height
-
-# 長さ (cm)
-length = root.find('.//ns2:Length', ns).text
-result['Length (inched)'] = length
-
-# 重量 (kg)
-weight = root.find('.//ns2:Weight', ns).text
-result['Weight (pound)'] = weight
-
-for header, element in result.items():
-    print(header, ' : ', element)
+print(min(price_list))

@@ -13,6 +13,7 @@ import os
 
 ASIN = input('ASIN?: ')
 
+
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
     'ACCESS_KEY_ID': os.environ['ACCESS_KEY_ID'],
@@ -27,17 +28,16 @@ def datetime_encode(dt):
 
 timestamp = datetime_encode(datetime.datetime.utcnow())
 
-
 data = {
     'AWSAccessKeyId': AMAZON_CREDENTIAL['ACCESS_KEY_ID'],
-    'Action'          : 'GetLowestOfferListingsForASIN',
+    'Action'          : 'GetCompetitivePricingForASIN',
     'MarketplaceId'   : 'A1VC38T7YXB528',
     'SellerId'        : AMAZON_CREDENTIAL['SELLER_ID'],
     'SignatureMethod' : 'HmacSHA256',
     'SignatureVersion': '2',
     'Timestamp'       : timestamp,
     'Version'         : '2011-10-01',
-    'ASINList.ASIN.1' : ASIN,
+    'ASINList.ASIN.1'     : ASIN
 }
 
 query_string = '&'.join('{}={}'.format(
@@ -65,12 +65,5 @@ ns = {
         'ns2'  :'http://mws.amazonservices.com/schema/Products/2011-10-01/default.xsd'
 }
 
-# 最安値
-price_list = []
-for price in root.findall('.//xmlns:ListingPrice/xmlns:Amount', ns):
-    price_list.append(price.text)
-
-print(min(price_list))
-
-
-# 発売日
+print(root.find('.//xmlns:OfferListingCount', ns).attrib)
+print(root.find('.//xmlns:OfferListingCount', ns).text)
