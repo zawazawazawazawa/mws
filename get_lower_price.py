@@ -13,7 +13,6 @@ import os
 
 ASIN = input('ASIN?: ')
 
-
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
     'ACCESS_KEY_ID': os.environ['ACCESS_KEY_ID'],
@@ -28,16 +27,17 @@ def datetime_encode(dt):
 
 timestamp = datetime_encode(datetime.datetime.utcnow())
 
+
 data = {
     'AWSAccessKeyId': AMAZON_CREDENTIAL['ACCESS_KEY_ID'],
-    'Action'          : 'GetMatchingProduct',
+    'Action'          : 'GetLowestOfferListingsForASIN',
     'MarketplaceId'   : 'A1VC38T7YXB528',
     'SellerId'        : AMAZON_CREDENTIAL['SELLER_ID'],
     'SignatureMethod' : 'HmacSHA256',
     'SignatureVersion': '2',
     'Timestamp'       : timestamp,
     'Version'         : '2011-10-01',
-    'ASINList.ASIN.1' : ASIN
+    'ASINList.ASIN.1' : ASIN,
 }
 
 query_string = '&'.join('{}={}'.format(
@@ -57,55 +57,20 @@ url = 'https://{}{}?{}&Signature={}'.format(
     DOMAIN, ENDPOINT, query_string, signature)
 
 response = requests.post(url).content.decode()
+
 root = ET.fromstring(response)
-print(root)
 
 ns = {
         'xmlns':'http://mws.amazonservices.com/schema/Products/2011-10-01',
         'ns2'  :'http://mws.amazonservices.com/schema/Products/2011-10-01/default.xsd'
 }
 
-# 商品名
-title = root.find('.//ns2:Title', ns).text
-print('Title: ', title)
+# 最安値
+price_list = []
+for price in root.findall('.//xmlns:ListingPrice/xmlns:Amount', ns):
+    price_list.append(price.text)
 
-# メーカ名
-manufacturer = root.find('.//ns2:Manufacturer', ns).text
-print('Manufacturer: ', manufacturer)
+print(min(price_list))
 
-# メーカ型番
-model = root.find('.//ns2:Model', ns).text
-print('Model: ', model)
-
-# ブランド名
-brand = root.find('.//ns2:Brand', ns).text
-print('Brand: ', brand)
-
-# 画像 (メイン)
-
-# 画像 (サムネ)
-image_url = root.find('.//ns2:URL', ns).text
-print('Image_url: ', image_url)
-
-# 商品グループ
-product_group = root.find('.//ns2:ProductGroup', ns).text
-print('Product Group: ', product_group)
-
-# 高さ (cm)
-height = root.find('.//ns2:Height', ns).text
-print('Height (inched): ', height)
-
-# 長さ (cm)
-length = root.find('.//ns2:Length', ns).text
-print('Length (inched): ', length)
-
-# 重量 (kg)
-weight = root.find('.//ns2:Weight', ns).text
-print('Weight (pounds): ', weight)
 
 # 発売日
-# 最安値
-# 最下位ランク
-
-# 出品者数
-# <OfferListingCount condition="Any">26</OfferListingCount>
