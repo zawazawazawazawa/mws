@@ -11,7 +11,7 @@ import six
 import xml.etree.ElementTree as ET
 import os
 
-ASIN = input('ASIN?: ')
+ASIN_list = ['B07MTZHCKF', 'B07H4KJTC9', 'B01KZB4FF4','B07F85WTS7']
 
 
 AMAZON_CREDENTIAL = {
@@ -36,9 +36,12 @@ data = {
     'SignatureMethod' : 'HmacSHA256',
     'SignatureVersion': '2',
     'Timestamp'       : timestamp,
-    'Version'         : '2011-10-01',
-    'ASINList.ASIN.1'     : ASIN
+    'Version'         : '2011-10-01'
 }
+
+for num in range(len(ASIN_list)):
+    index = str(num + 1)
+    data['ASINList.ASIN.' + index] = ASIN_list[num]
 
 query_string = '&'.join('{}={}'.format(
     n, urllib.parse.quote(v, safe='')) for n, v in sorted(data.items()))
@@ -65,5 +68,7 @@ ns = {
         'ns2'  :'http://mws.amazonservices.com/schema/Products/2011-10-01/default.xsd'
 }
 
-print(root.find('.//xmlns:OfferListingCount', ns).attrib)
-print(root.find('.//xmlns:OfferListingCount', ns).text)
+for product in root.findall('.//xmlns:Product', ns):
+
+    count = product.find('.//xmlns:OfferListingCount', ns)
+    print('' if count is None else count.text)

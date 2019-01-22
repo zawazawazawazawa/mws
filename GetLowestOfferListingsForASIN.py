@@ -11,7 +11,7 @@ import six
 import xml.etree.ElementTree as ET
 import os
 
-ASIN = input('ASIN?: ')
+ASIN_list = ['B07MTZHCKF', 'B07H4KJTC9', 'B01KZB4FF4','B07F85WTS7']
 
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
@@ -37,8 +37,11 @@ data = {
     'SignatureVersion': '2',
     'Timestamp'       : timestamp,
     'Version'         : '2011-10-01',
-    'ASINList.ASIN.1' : ASIN,
 }
+
+for num in range(len(ASIN_list)):
+    index = str(num + 1)
+    data['ASINList.ASIN.' + index] = ASIN_list[num]
 
 query_string = '&'.join('{}={}'.format(
     n, urllib.parse.quote(v, safe='')) for n, v in sorted(data.items()))
@@ -65,9 +68,12 @@ ns = {
         'ns2'  :'http://mws.amazonservices.com/schema/Products/2011-10-01/default.xsd'
 }
 
-# 最安値
-price_list = []
-for price in root.findall('.//xmlns:ListingPrice/xmlns:Amount', ns):
-    price_list.append(price.text)
+result = {}
+for product in root.findall('.//xmlns:Product', ns):
 
-print(min(price_list))
+    # 最安値
+    price_list = []
+    for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', ns):
+        price_list.append(price.text)
+
+    print(min(price_list) if price_list else '')
