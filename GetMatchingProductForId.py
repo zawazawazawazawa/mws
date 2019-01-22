@@ -71,6 +71,9 @@ ns = {
 for product in root.findall('.//xmlns:Product', ns):
 
     result = {}
+
+
+
     # ASIN
     asin = product.find('.//xmlns:ASIN', ns).text
     result['ASIN'] = asin
@@ -85,7 +88,7 @@ for product in root.findall('.//xmlns:Product', ns):
 
     # メーカ型番
     model = product.find('.//ns2:Model', ns)
-    result['Model'] = model.text if type(model) == None else ''
+    result['Model'] = '' if model is None else model.text
 
     # ブランド名
     brand = product.find('.//ns2:Brand', ns).text
@@ -113,19 +116,19 @@ for product in root.findall('.//xmlns:Product', ns):
 
     # 長さ (cm)
     length = product.find('.//ns2:Length', ns)
-    result['Length (inched)'] = length.text if type(length) == None else ''
+    result['Length (inched)'] = '' if length is None else length.text
 
     # 幅 (cm)
     width = product.find('.//ns2:Width', ns)
-    result['Width (inched)'] = width.text if type(length) == None else ''
+    result['Width (inched)'] = '' if width is None else width.text
 
     # 重量 (kg)
     weight = product.find('.//ns2:Weight', ns)
-    result['Weight (pound)'] = weight.text if type(weight) == None else ''
+    result['Weight (pound)'] = '' if weight is None else weight.text
 
     # 発売日
     release_date = product.find('.//ns2:ReleaseDate', ns)
-    result['Release Date'] = release_date.text if type(release_date) == None else ''
+    result['Release Date'] = '' if release_date is None else release_date.text
 
     # 最下位セールスランク
     rank_dict = {}
