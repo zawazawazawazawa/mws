@@ -11,6 +11,7 @@ import six
 import xml.etree.ElementTree as ET
 import os
 import copy
+from time import sleep
 
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
@@ -19,8 +20,8 @@ AMAZON_CREDENTIAL = {
 }
 
 # max 10
-ASIN_list = ['B07MTZHCKF', 'B07H4KJTC9', 'B01KZB4FF4','B07F85WTS7']
-print(ASIN_list)
+asin_list = ['B07MTZHCKF', 'B07H4KJTC9', 'B01KZB4FF4','B07F85WTS7']
+print(asin_list)
 
 class Product:
     # 全APIで使う変数
@@ -76,10 +77,13 @@ class Product:
         data1['Action'] = 'GetMatchingProductForId'
         data1['IdType'] = 'ASIN'
         data1.update(self.enumerate_param('IdList.Id.', self.asin_list))
-        print(data1)
         return self.make_url_and_get_response(data1)
-    #
-    # def get_lowest_offer_listings_for_asin(self):
+
+    def get_lowest_offer_listings_for_asin(self):
+        data2 = copy.deepcopy(self.data)
+        data2['Action']        = 'GetLowestOfferListingsForASIN'
+        data2.update(self.enumerate_param('ASINList.ASIN.', self.asin_list))
+        return self.make_url_and_get_response(data2)
 
     def get_competitive_pricing_for_asin(self):
         data3 = copy.deepcopy(self.data)
@@ -111,88 +115,110 @@ class Product:
         return self.get_list(root)
 
     def get_list(self, root):
-        count_list = []
+        result = {}
         for product in root.findall('.//xmlns:Product', self.ns):
             if 'GetCompetitivePricingForASIN' in root.tag:
+                # ASIN
+                asin = product.find('.//xmlns:ASIN', self.ns).text
+                print(asin)
                 # condition=Any
                 count_node = product.find('.//xmlns:OfferListingCount[@condition="Any"]', self.ns)
                 count = 0 if count_node is None else int(count_node.text)
-                count_list.append(count)
-                return count_list
+                result[asin] = {'出品者数': count}
 
             elif 'GetMatchingProductForId' in root.tag:
-                result = {}
+                # ASIN
+                asin = product.find('.//xmlns:ASIN', self.ns).text
                 # 商品名
                 title = product.find('.//ns2:Title', self.ns).text
-                result['Title'] = title
+                result[asin] = {'商品名': title}
 
                 # メーカ名
                 manufacturer = product.find('.//ns2:Manufacturer', self.ns).text
-                result['Manufacturer'] = manufacturer
+                result[asin].update({'メーカ名': manufacturer})
 
                 # メーカ型番
                 model = product.find('.//ns2:Model', self.ns)
-                result['Model'] = '' if model is None else model.text
+                result[asin].update({'メーカ型番': '' if model is None else model.text})
 
                 # ブランド名
                 brand = product.find('.//ns2:Brand', self.ns).text
-                result['Brand'] = brand
+                result[asin].update({'ブランド名': brand})
 
                 # 画像 (サムネ)
                 image_url = product.find('.//ns2:URL', self.ns).text
-                result['Image_URL'] = image_url
+                result[asin].update({'画像（サムネイル）': image_url})
 
                 # 画像 (メイン)
                 if '_SL75_.' in image_url:
                     main_url = image_url.replace('_SL75_.', '')
                 else:
                     main_url = ''
-                result['Main_image_url'] = main_url
+                result[asin].update({'画像（メイン）': main_url})
 
 
                 # 商品グループ
                 product_group = product.find('.//ns2:ProductGroup', self.ns).text
-                result['Product Group'] = product_group
+                result[asin].update({'商品グループ': product_group})
 
                 # 高さ (cm)
                 height = product.find('.//ns2:Height', self.ns).text
-                result['Height (inched)'] = height
+                result[asin].update({'高さ（inched）': height})
 
                 # 長さ (cm)
                 length = product.find('.//ns2:Length', self.ns)
-                result['Length (inched)'] = '' if length is None else length.text
+                result[asin].update({'長さ（inched）': '' if length is None else length.text})
 
                 # 幅 (cm)
                 width = product.find('.//ns2:Width', self.ns)
-                result['Width (inched)'] = '' if width is None else width.text
+                result[asin].update({'幅（inched）': '' if width is None else width.text})
 
                 # 重量 (kg)
                 weight = product.find('.//ns2:Weight', self.ns)
-                result['Weight (pound)'] = '' if weight is None else weight.text
+                result[asin].update({'重量（pound）': '' if weight is None else weight.text})
 
                 # 発売日
                 release_date = product.find('.//ns2:ReleaseDate', self.ns)
-                result['Release Date'] = '' if release_date is None else release_date.text
+                result[asin].update({'発売日': '' if release_date is None else release_date.text})
 
                 # 最下位セールスランク
                 rank_dict = {}
                 for category, rank in zip(product.findall('.//xmlns:ProductCategoryId', self.ns), product.findall('.//xmlns:Rank', self.ns)):
                     rank_dict[category.text] = rank.text
 
-                result.update(rank_dict)
+                result[asin].update({'最下位カテゴリセールスランク': rank_dict})
 
-                for header, element in result.items():
-                    print(header, ' : ', element)
-                print('\n')
+            else:
+                # ASIN
+                asin = product.find('.//xmlns:ASIN', self.ns).text
+                # 最安値
+                price_list = []
+                for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', self.ns):
+                    price_list.append(price.text)
 
-get_product = Product(ASIN_list)
-# print(product.get_competitive_pricing_for_asin())
-get_product.get_matching_product_for_id()
+                result[asin] = {'最安値': min(price_list) if price_list else ''}
 
-"""
-product = Product(ASIN_list)
-result = [] || {}
-product.get_matching_product_for_id()
-product.get_lowest_offer_listings_for_asin()
-product.get_competitive_pricing_for_asin()
-"""
+        return result
+
+
+get_product = Product(asin_list)
+info = {}
+for asin in asin_list:
+    info[asin] = {}
+print(info)
+
+return_dic = get_product.get_competitive_pricing_for_asin()
+for id, dic in return_dic.items():
+    info[id] = dic
+print(info)
+sleep(3)
+return_dic = get_product.get_matching_product_for_id()
+for id, dic in return_dic.items():
+    info[id].update(dic)
+print(info)
+sleep(3)
+return_dic = get_product.get_lowest_offer_listings_for_asin()
+for id, dic in return_dic.items():
+    info[id].update(dic)
+
+print(info)
