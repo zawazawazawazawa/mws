@@ -120,7 +120,6 @@ class Product:
             if 'GetCompetitivePricingForASIN' in root.tag:
                 # ASIN
                 asin = product.find('.//xmlns:ASIN', self.ns).text
-                print(asin)
                 # condition=Any
                 count_node = product.find('.//xmlns:OfferListingCount[@condition="Any"]', self.ns)
                 count = 0 if count_node is None else int(count_node.text)
@@ -205,20 +204,23 @@ get_product = Product(asin_list)
 info = {}
 for asin in asin_list:
     info[asin] = {}
-print(info)
 
 return_dic = get_product.get_competitive_pricing_for_asin()
 for id, dic in return_dic.items():
     info[id] = dic
-print(info)
+
 sleep(3)
 return_dic = get_product.get_matching_product_for_id()
 for id, dic in return_dic.items():
     info[id].update(dic)
-print(info)
+
 sleep(3)
 return_dic = get_product.get_lowest_offer_listings_for_asin()
 for id, dic in return_dic.items():
     info[id].update(dic)
 
-print(info)
+for asin, info_dic in info.items():
+    print(asin)
+    for header, info in info_dic.items():
+        print(header, info)
+    print('\n')
