@@ -11,6 +11,7 @@ import six
 import xml.etree.ElementTree as ET
 import os
 import copy
+import pandas
 from time import sleep
 
 AMAZON_CREDENTIAL = {
@@ -20,7 +21,16 @@ AMAZON_CREDENTIAL = {
 }
 
 # max 10
-asin_list = ['B07MTZHCKF', 'B07H4KJTC9', 'B01KZB4FF4','B07F85WTS7']
+asin_list = []
+print('Paste ASIN List(max 10)\nAnd pless "f" key to finish')
+
+while True:
+    asin = input()
+    if asin == 'f':
+        break
+    else:
+        asin_list.append(asin)
+
 print(asin_list)
 
 class Product:
@@ -201,26 +211,32 @@ class Product:
 
 
 get_product = Product(asin_list)
-info = {}
+product_info = {}
 for asin in asin_list:
-    info[asin] = {}
+    product_info[asin] = {}
 
 return_dic = get_product.get_competitive_pricing_for_asin()
 for id, dic in return_dic.items():
-    info[id] = dic
+    product_info[id] = dic
 
 sleep(3)
 return_dic = get_product.get_matching_product_for_id()
 for id, dic in return_dic.items():
-    info[id].update(dic)
+    product_info[id].update(dic)
 
 sleep(3)
 return_dic = get_product.get_lowest_offer_listings_for_asin()
 for id, dic in return_dic.items():
-    info[id].update(dic)
+    product_info[id].update(dic)
 
-for asin, info_dic in info.items():
+for asin, info_dic in product_info.items():
     print(asin)
     for header, info in info_dic.items():
         print(header, info)
     print('\n')
+
+print(product_info)
+df = pandas.DataFrame.from_dict(product_info)
+print(df)
+# CSV ファイル (employee.csv) として出力
+df.T.to_csv("product_info.csv")
