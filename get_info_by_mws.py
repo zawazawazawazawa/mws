@@ -15,9 +15,9 @@ import pandas
 from time import sleep
 
 AMAZON_CREDENTIAL = {
-    'SELLER_ID': os.environ['SELLER_ID'],
-    'ACCESS_KEY_ID': os.environ['ACCESS_KEY_ID'],
-    'ACCESS_SECRET': os.environ['ACCESS_SECRET']
+    'SELLER_ID': input('SELLER_ID: '),
+    'ACCESS_KEY_ID': input('ACCESS_KEY_ID: '),
+    'ACCESS_SECRET': input('ACCESS_SECRET: ')
 }
 
 # max 10
@@ -229,14 +229,9 @@ return_dic = get_product.get_lowest_offer_listings_for_asin()
 for id, dic in return_dic.items():
     product_info[id].update(dic)
 
-for asin, info_dic in product_info.items():
-    print(asin)
-    for header, info in info_dic.items():
-        print(header, info)
-    print('\n')
 
-print(product_info)
-df = pandas.DataFrame.from_dict(product_info)
-print(df)
+df = pandas.DataFrame.from_dict(product_info).T
 # CSV ファイル (employee.csv) として出力
-df.T.to_csv("product_info.csv")
+df.to_csv("product_info.csv")
+
+print('Finish!')
