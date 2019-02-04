@@ -15,14 +15,13 @@ import pandas
 from time import sleep
 
 AMAZON_CREDENTIAL = {
-    'SELLER_ID': input('SELLER_ID: '),
-    'ACCESS_KEY_ID': input('ACCESS_KEY_ID: '),
-    'ACCESS_SECRET': input('ACCESS_SECRET: ')
+    'SELLER_ID': os.environ['SELLER_ID'],
+    'ACCESS_KEY_ID': os.environ['ACCESS_KEY_ID'],
+    'ACCESS_SECRET': os.environ['ACCESS_SECRET']
 }
 
-# max 10
 asin_list = []
-print('Paste ASIN List(max 10)\nAnd pless "f" key to finish')
+print('Paste ASIN List\nAnd pless "f" key to finish')
 
 while True:
     asin = input()
@@ -31,7 +30,12 @@ while True:
     else:
         asin_list.append(asin)
 
-print(asin_list)
+asin_set = list(set(asin_list))
+
+print('list: ', asin_list)
+print(len(asin_list))
+print('set: ', asin_set)
+print(len(asin_set))
 
 class Product:
     # 全APIで使う変数
@@ -58,8 +62,8 @@ class Product:
         'Version'         : '2011-10-01'
     }
 
-    def __init__(self, asin_list):
-        self.asin_list = asin_list
+    def __init__(self, asin_set):
+        self.asin_set = asin_set
 
     def enumerate_param(self, param, values):
         """
@@ -86,19 +90,19 @@ class Product:
         data1 = copy.deepcopy(self.data)
         data1['Action'] = 'GetMatchingProductForId'
         data1['IdType'] = 'ASIN'
-        data1.update(self.enumerate_param('IdList.Id.', self.asin_list))
+        data1.update(self.enumerate_param('IdList.Id.', self.asin_set))
         return self.make_url_and_get_response(data1)
 
     def get_lowest_offer_listings_for_asin(self):
         data2 = copy.deepcopy(self.data)
         data2['Action']        = 'GetLowestOfferListingsForASIN'
-        data2.update(self.enumerate_param('ASINList.ASIN.', self.asin_list))
+        data2.update(self.enumerate_param('ASINList.ASIN.', self.asin_set))
         return self.make_url_and_get_response(data2)
 
     def get_competitive_pricing_for_asin(self):
         data3 = copy.deepcopy(self.data)
         data3['Action']        = 'GetCompetitivePricingForASIN'
-        data3.update(self.enumerate_param('ASINList.ASIN.', self.asin_list))
+        data3.update(self.enumerate_param('ASINList.ASIN.', self.asin_set))
         return self.make_url_and_get_response(data3)
 
     def make_url_and_get_response(self, data):
@@ -129,7 +133,9 @@ class Product:
         for product in root.findall('.//xmlns:Product', self.ns):
             if 'GetCompetitivePricingForASIN' in root.tag:
                 # ASIN
-                asin = product.find('.//xmlns:ASIN', self.ns).text
+                asin = product.find('.//xmlns:ASIN', self.ns)
+                asin = '' if asin is None else asin.text
+                result[asin] = {'ASIN': asin}
                 # condition=Any
                 count_node = product.find('.//xmlns:OfferListingCount[@condition="Any"]', self.ns)
                 count = 0 if count_node is None else int(count_node.text)
@@ -137,22 +143,24 @@ class Product:
 
             elif 'GetMatchingProductForId' in root.tag:
                 # ASIN
-                asin = product.find('.//xmlns:ASIN', self.ns).text
+                asin = product.find('.//xmlns:ASIN', self.ns)
+                asin = '' if asin is None else asin.text
+                result[asin] = {'ASIN': asin}
                 # 商品名
-                title = product.find('.//ns2:Title', self.ns).text
-                result[asin] = {'商品名': title}
+                title = product.find('.//ns2:Title', self.ns)
+                result[asin].update({'商品名': '' if title is None else product.text})
 
                 # メーカ名
-                manufacturer = product.find('.//ns2:Manufacturer', self.ns).text
-                result[asin].update({'メーカ名': manufacturer})
+                manufacturer = product.find('.//ns2:Manufacturer', self.ns)
+                result[asin].update({'メーカ名': '' if manufacturer is None else manufacturer.text})
 
                 # メーカ型番
                 model = product.find('.//ns2:Model', self.ns)
                 result[asin].update({'メーカ型番': '' if model is None else model.text})
 
                 # ブランド名
-                brand = product.find('.//ns2:Brand', self.ns).text
-                result[asin].update({'ブランド名': brand})
+                brand = product.find('.//ns2:Brand', self.ns)
+                result[asin].update({'ブランド名': '' if brand is None else brand.text})
 
                 # 画像 (サムネ)
                 image_url = product.find('.//ns2:URL', self.ns).text
@@ -165,26 +173,25 @@ class Product:
                     main_url = ''
                 result[asin].update({'画像（メイン）': main_url})
 
-
                 # 商品グループ
-                product_group = product.find('.//ns2:ProductGroup', self.ns).text
-                result[asin].update({'商品グループ': product_group})
+                product_group = product.find('.//ns2:ProductGroup', self.ns)
+                result[asin].update({'商品グループ': '' if product_group is None else product_group.text})
 
                 # 高さ (cm)
-                height = product.find('.//ns2:Height', self.ns).text
-                result[asin].update({'高さ（inched）': height})
+                height = product.find('.//ns2:Height', self.ns)
+                result[asin].update({'高さ（cm）': '' if height is None else round(float(height.text)/0.3937, 2)})
 
                 # 長さ (cm)
                 length = product.find('.//ns2:Length', self.ns)
-                result[asin].update({'長さ（inched）': '' if length is None else length.text})
+                result[asin].update({'長さ（cm）': '' if length is None else round(float(length.text)/0.3937, 2)})
 
                 # 幅 (cm)
                 width = product.find('.//ns2:Width', self.ns)
-                result[asin].update({'幅（inched）': '' if width is None else width.text})
+                result[asin].update({'幅（cm）': '' if width is None else round(float(width.text)/0.3937, 2)})
 
                 # 重量 (kg)
                 weight = product.find('.//ns2:Weight', self.ns)
-                result[asin].update({'重量（pound）': '' if weight is None else weight.text})
+                result[asin].update({'重量（kg）': '' if weight is None else round(float(weight.text)*453.59237, 2)})
 
                 # 発売日
                 release_date = product.find('.//ns2:ReleaseDate', self.ns)
@@ -193,45 +200,118 @@ class Product:
                 # 最下位セールスランク
                 rank_dict = {}
                 for category, rank in zip(product.findall('.//xmlns:ProductCategoryId', self.ns), product.findall('.//xmlns:Rank', self.ns)):
-                    rank_dict[category.text] = rank.text
+                    if 'display_on_website' not in category.text:
+                        rank_dict[category.text] = rank.text
 
                 result[asin].update({'最下位カテゴリセールスランク': rank_dict})
 
             else:
                 # ASIN
-                asin = product.find('.//xmlns:ASIN', self.ns).text
-                # 最安値
+                asin = product.find('.//xmlns:ASIN', self.ns)
+                asin = '' if asin is None else asin.text
+                result[asin] = {'ASIN': asin}
+                # FBAの新品最安値
                 price_list = []
-                for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', self.ns):
+                # for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', self.ns):
+                for price in product.findall('.//xmlns:LandedPrice/xmlns:Amount', self.ns):
                     price_list.append(price.text)
 
                 result[asin] = {'最安値': min(price_list) if price_list else ''}
+                # FBAではない新品最安値
+                # 中古の最安値
+
+
+
+
 
         return result
 
 
-get_product = Product(asin_list)
+quotient  = len(asin_set) // 5
+print('quotient: ', quotient)
+remainder = len(asin_set) % 5
+print('remainder', remainder)
+data = []
+
+start = datetime.datetime.now()
+print('start: ', start.strftime("%Y/%m/%d %H:%M:%S"))
+
+counter = 0
 product_info = {}
-for asin in asin_list:
+for asin in asin_set:
     product_info[asin] = {}
 
-return_dic = get_product.get_competitive_pricing_for_asin()
-for id, dic in return_dic.items():
-    product_info[id] = dic
+while counter < quotient:
+    print(counter)
+    print(quotient)
+    print(asin_set[(counter * 5):(counter + 1)*5])
 
-sleep(3)
-return_dic = get_product.get_matching_product_for_id()
-for id, dic in return_dic.items():
-    product_info[id].update(dic)
+    get_product = Product(asin_set[(counter * 5):(counter + 1)*5])
 
-sleep(3)
-return_dic = get_product.get_lowest_offer_listings_for_asin()
-for id, dic in return_dic.items():
-    product_info[id].update(dic)
+    return_dic = get_product.get_competitive_pricing_for_asin()
+
+    for id, dic in return_dic.items():
+        product_info[id] = dic
+
+    sleep(1)
+    return_dic = get_product.get_matching_product_for_id()
+
+    for id, dic in return_dic.items():
+        product_info[id].update(dic)
+
+    sleep(1)
+    return_dic = get_product.get_lowest_offer_listings_for_asin()
+
+    for id, dic in return_dic.items():
+        product_info[id].update(dic)
+
+    counter += 1
+
+if remainder != 0:
+    print('last')
+    print(asin_set[-remainder:])
+    get_product = Product(asin_set[-remainder:])
+
+    return_dic = get_product.get_competitive_pricing_for_asin()
+
+    for id, dic in return_dic.items():
+        product_info[id] = dic
+
+    sleep(1)
+    return_dic = get_product.get_matching_product_for_id()
+
+    for id, dic in return_dic.items():
+        product_info[id].update(dic)
+
+    sleep(1)
+    return_dic = get_product.get_lowest_offer_listings_for_asin()
+
+    for id, dic in return_dic.items():
+        product_info[id].update(dic)
 
 
-df = pandas.DataFrame.from_dict(product_info).T
+
+data = []
+headers = ['ASIN','出品者数', '商品名', 'メーカ名', 'メーカ型番', 'ブランド名', '画像（サムネイル）', '画像（メイン）', '商品グループ', '高さ（cm）', '長さ（cm）', '幅（cm）', '重量（kg）', '発売日', '最下位カテゴリセールスランク', '最安値']
+dict = {key:[] for key in headers}
+
+for header in headers:
+    for asin in asin_list:
+        print(asin)
+        if asin == '':
+            dict[header].append('')
+        else:
+            dict[header].append(product_info[asin][header])
+
+
+df = pandas.DataFrame(dict, columns=headers)
+print(df)
+
 # CSV ファイル (employee.csv) として出力
 df.to_csv("product_info.csv")
 
 print('Finish!')
+
+stop = datetime.datetime.now()
+print('stop: ', stop.strftime("%Y/%m/%d %H:%M:%S"))
+print(stop - start)

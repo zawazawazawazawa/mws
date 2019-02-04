@@ -11,14 +11,6 @@ import six
 import xml.etree.ElementTree as ET
 import os
 
-B07H4KJTC9
-B07MTZHCKF
-B01KZB4FF4
-
-B07F85WTS7
-
-
-
 ASIN_list = ['B07MTZHCKF', 'B07MTZHCKF', 'B01KZB4FF4','B07F85WTS7']
 
 AMAZON_CREDENTIAL = {
@@ -79,9 +71,14 @@ ns = {
 result = {}
 for product in root.findall('.//xmlns:Product', ns):
 
-    # 最安値
+    # FBAの新品最安値
     price_list = []
-    for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', ns):
-        price_list.append(price.text)
+    # for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', self.ns):
+    for price in product.findall('.//xmlns:Qualifiers', ns):
+        for child in price:
+            print(child.tag)
+        print('\n')
 
-    print(min(price_list) if price_list else '')
+    # result[asin] = {'最安値': min(price_list) if price_list else ''}
+    # FBAではない新品最安値
+    # 中古の最安値
