@@ -11,7 +11,7 @@ import six
 import xml.etree.ElementTree as ET
 import os
 
-ASIN_list = ['B07MTZHCKF', 'B07MTZHCKF', 'B01KZB4FF4','B07F85WTS7']
+ASIN_list = ['B07MTZHCKF', 'B01KZB4FF4','B07F85WTS7', 'B06Y3YLKP9']
 
 AMAZON_CREDENTIAL = {
     'SELLER_ID': os.environ['SELLER_ID'],
@@ -70,15 +70,26 @@ ns = {
 
 result = {}
 for product in root.findall('.//xmlns:Product', ns):
+    asin = product.find('.//xmlns:ASIN', ns).text
+    price_list_new_amazon = []
+    price_list_new_other  = []
+    price_list_used       = []
+    for LowestOfferListing in product.findall('.//xmlns:LowestOfferListing', ns):
+        if LowestOfferListing.find('.//xmlns:ItemCondition', ns).text == 'New':
+            if LowestOfferListing.find('.//xmlns:FulfillmentChannel', ns).text == 'Amazon':
+                # FBS新品最安値
+                price_list_new_amazon.append(LowestOfferListing.find('.//xmlns:LandedPrice/xmlns:Amount', ns).text)
+            else:
+                # FBAではない新品最安値
+                price_list_new_other.append(LowestOfferListing.find('.//xmlns:LandedPrice/xmlns:Amount', ns).text)
+        elif LowestOfferListing.find('.//xmlns:ItemCondition', ns).text == 'Used':
+            # 中古の最安値
+            price_list_used.append(LowestOfferListing.find('.//xmlns:LandedPrice/xmlns:Amount', ns).text)
+    result[asin] = {'new_amazon': '' if not price_list_new_amazon else min(price_list_new_amazon),
+                    'new_other' : '' if not price_list_new_other  else min(price_list_new_other),
+                    'used'      : '' if not price_list_used       else min(price_list_used)
+                    }
 
-    # FBAの新品最安値
-    price_list = []
-    # for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', self.ns):
-    for price in product.findall('.//xmlns:Qualifiers', ns):
-        for child in price:
-            print(child.tag)
-        print('\n')
+print(result)
 
     # result[asin] = {'最安値': min(price_list) if price_list else ''}
-    # FBAではない新品最安値
-    # 中古の最安値

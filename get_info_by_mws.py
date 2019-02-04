@@ -20,22 +20,22 @@ AMAZON_CREDENTIAL = {
     'ACCESS_SECRET': os.environ['ACCESS_SECRET']
 }
 
-asin_list = []
-print('Paste ASIN List\nAnd pless "f" key to finish')
 
-while True:
-    asin = input()
-    if asin == 'f':
-        break
-    else:
-        asin_list.append(asin)
+def make_product_info(return_dic):
+    for id, dic in return_dic.items():
+        if product_info[id]:
+            product_info[id].update(dic)
+        else:
+            product_info[id] = dic
 
-asin_set = list(set(asin_list))
-
-print('list: ', asin_list)
-print(len(asin_list))
-print('set: ', asin_set)
-print(len(asin_set))
+def get_all_infomation(counter):
+    get_product = Product(asin_set[:5])
+    make_product_info(get_product.get_competitive_pricing_for_asin())
+    sleep(1)
+    make_product_info(get_product.get_matching_product_for_id())
+    sleep(1)
+    make_product_info(get_product.get_lowest_offer_listings_for_asin())
+    del asin_set[:5]
 
 class Product:
     # 全APIで使う変数
@@ -148,7 +148,7 @@ class Product:
                 result[asin] = {'ASIN': asin}
                 # 商品名
                 title = product.find('.//ns2:Title', self.ns)
-                result[asin].update({'商品名': '' if title is None else product.text})
+                result[asin].update({'商品名': '' if title is None else title.text})
 
                 # メーカ名
                 manufacturer = product.find('.//ns2:Manufacturer', self.ns)
@@ -191,17 +191,17 @@ class Product:
 
                 # 重量 (kg)
                 weight = product.find('.//ns2:Weight', self.ns)
-                result[asin].update({'重量（kg）': '' if weight is None else round(float(weight.text)*453.59237, 2)})
+                result[asin].update({'重量（g）': '' if weight is None else round(float(weight.text)*453.59237, 2)})
 
                 # 発売日
                 release_date = product.find('.//ns2:ReleaseDate', self.ns)
                 result[asin].update({'発売日': '' if release_date is None else release_date.text})
 
                 # 最下位セールスランク
-                rank_dict = {}
+                rank_dict = []
                 for category, rank in zip(product.findall('.//xmlns:ProductCategoryId', self.ns), product.findall('.//xmlns:Rank', self.ns)):
                     if 'display_on_website' not in category.text:
-                        rank_dict[category.text] = rank.text
+                        rank_dict.append(rank.text)
 
                 result[asin].update({'最下位カテゴリセールスランク': rank_dict})
 
@@ -210,94 +210,59 @@ class Product:
                 asin = product.find('.//xmlns:ASIN', self.ns)
                 asin = '' if asin is None else asin.text
                 result[asin] = {'ASIN': asin}
-                # FBAの新品最安値
-                price_list = []
-                # for price in product.findall('.//xmlns:ListingPrice/xmlns:Amount', self.ns):
-                for price in product.findall('.//xmlns:LandedPrice/xmlns:Amount', self.ns):
-                    price_list.append(price.text)
 
-                result[asin] = {'最安値': min(price_list) if price_list else ''}
-                # FBAではない新品最安値
-                # 中古の最安値
-
-
-
-
-
+                price_list_new_amazon = []
+                price_list_new_other  = []
+                price_list_used       = []
+                for LowestOfferListing in product.findall('.//xmlns:LowestOfferListing', self.ns):
+                    if LowestOfferListing.find('.//xmlns:ItemCondition', self.ns).text == 'New':
+                        if LowestOfferListing.find('.//xmlns:FulfillmentChannel', self.ns).text == 'Amazon':
+                            # FBS新品最安値
+                            price_list_new_amazon.append(LowestOfferListing.find('.//xmlns:LandedPrice/xmlns:Amount', self.ns).text)
+                        else:
+                            # FBAではない新品最安値
+                            price_list_new_other.append(LowestOfferListing.find('.//xmlns:LandedPrice/xmlns:Amount', self.ns).text)
+                    elif LowestOfferListing.find('.//xmlns:ItemCondition', self.ns).text == 'Used':
+                        # 中古の最安値
+                        price_list_used.append(LowestOfferListing.find('.//xmlns:LandedPrice/xmlns:Amount', self.ns).text)
+                result[asin].update({'FBA新品最安値'   : min(price_list_new_amazon) if price_list_new_amazon else ''})
+                result[asin].update({'その他新品最安値' : min(price_list_new_other)  if price_list_new_other  else ''})
+                result[asin].update({'中古最安値'      : min(price_list_used)       if price_list_used       else ''})
         return result
 
+asin_list = []
+print('Paste ASIN List\nAnd pless "f" key to finish')
+
+while True:
+    str = input()
+    if str == 'f':
+        break
+    else:
+        asin_list.append(str)
+
+asin_set = list(set(asin_list))
 
 quotient  = len(asin_set) // 5
-print('quotient: ', quotient)
-remainder = len(asin_set) % 5
-print('remainder', remainder)
-data = []
 
-start = datetime.datetime.now()
-print('start: ', start.strftime("%Y/%m/%d %H:%M:%S"))
-
-counter = 0
 product_info = {}
 for asin in asin_set:
     product_info[asin] = {}
 
-while counter < quotient:
-    print(counter)
-    print(quotient)
-    print(asin_set[(counter * 5):(counter + 1)*5])
-
-    get_product = Product(asin_set[(counter * 5):(counter + 1)*5])
-
-    return_dic = get_product.get_competitive_pricing_for_asin()
-
-    for id, dic in return_dic.items():
-        product_info[id] = dic
-
-    sleep(1)
-    return_dic = get_product.get_matching_product_for_id()
-
-    for id, dic in return_dic.items():
-        product_info[id].update(dic)
-
-    sleep(1)
-    return_dic = get_product.get_lowest_offer_listings_for_asin()
-
-    for id, dic in return_dic.items():
-        product_info[id].update(dic)
-
+print('start')
+counter = 0
+while counter <= quotient:
+    print((counter+1)*5)
+    get_all_infomation(counter)
     counter += 1
 
-if remainder != 0:
-    print('last')
-    print(asin_set[-remainder:])
-    get_product = Product(asin_set[-remainder:])
-
-    return_dic = get_product.get_competitive_pricing_for_asin()
-
-    for id, dic in return_dic.items():
-        product_info[id] = dic
-
-    sleep(1)
-    return_dic = get_product.get_matching_product_for_id()
-
-    for id, dic in return_dic.items():
-        product_info[id].update(dic)
-
-    sleep(1)
-    return_dic = get_product.get_lowest_offer_listings_for_asin()
-
-    for id, dic in return_dic.items():
-        product_info[id].update(dic)
-
-
-
 data = []
-headers = ['ASIN','出品者数', '商品名', 'メーカ名', 'メーカ型番', 'ブランド名', '画像（サムネイル）', '画像（メイン）', '商品グループ', '高さ（cm）', '長さ（cm）', '幅（cm）', '重量（kg）', '発売日', '最下位カテゴリセールスランク', '最安値']
-dict = {key:[] for key in headers}
+headers = ['ASIN','出品者数', '商品名', 'メーカ名', 'メーカ型番', 'ブランド名', '画像（サムネイル）', '画像（メイン）',
+           '商品グループ', '高さ（cm）', '長さ（cm）', '幅（cm）', '重量（g）', '発売日', '最下位カテゴリセールスランク',
+           'FBA新品最安値', 'その他新品最安値', '中古最安値']
 
+dict = {key:[] for key in headers}
 for header in headers:
     for asin in asin_list:
-        print(asin)
         if asin == '':
             dict[header].append('')
         else:
@@ -305,13 +270,10 @@ for header in headers:
 
 
 df = pandas.DataFrame(dict, columns=headers)
-print(df)
+
+fn = input('File name :')
 
 # CSV ファイル (employee.csv) として出力
-df.to_csv("product_info.csv")
+df.to_csv("{}.csv".format(fn))
 
 print('Finish!')
-
-stop = datetime.datetime.now()
-print('stop: ', stop.strftime("%Y/%m/%d %H:%M:%S"))
-print(stop - start)
